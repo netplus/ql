@@ -1,0 +1,50 @@
+{
+  "schema_version": "ql.p0.nav-sample/1",
+  "data_version": "p0-20261015",
+  "method_version": "raw-nav-change/1",
+  "timezone": "Asia/Shanghai",
+  "collection_mode": "web_rendered_text_transcribed",
+  "retrieval_window_started_at": "2026-10-15T22:34:15+08:00",
+  "evidence_recorded_at": "2026-10-15T22:37:30+08:00",
+  "source_published_at": null,
+  "historical_first_available_at": null,
+  "origin_http_response_archived": false,
+  "scheduled_acquisition_verified": false,
+  "redistribution_status": "not_cleared",
+  "public_export_allowed": false,
+  "corporate_actions_verified": false,
+  "scope": "Three selected ETF NAV series; not the A-share market or a canonical industry ranking",
+  "calendar_source": "https://www.sse.com.cn/disclosure/dealinstruc/closed/",
+  "sample_calendar": ["2026-10-08", "2026-10-09", "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15"],
+  "benchmark_proxy": "510330",
+  "sources": {
+    "chinaamc-159995": {"url": "https://www.chinaamc.com/fund/159995/index.shtml", "provider": "China Asset Management", "evidence_reference": "turn463244view0", "source_lines": "115-154", "fields": ["日期", "净值", "累计净值"], "unit": "CNY/share", "latest_reported_daily_change_pct": "-1.55"},
+    "chinaamc-515030": {"url": "https://www.chinaamc.com/fund/515030/index.shtml", "provider": "China Asset Management", "evidence_reference": "turn463244view1", "source_lines": "115-154", "fields": ["日期", "净值", "累计净值"], "unit": "CNY/share", "latest_reported_daily_change_pct": "-1.46"},
+    "chinaamc-510330": {"url": "https://www.chinaamc.com/fund/510330/index.shtml", "provider": "China Asset Management", "evidence_reference": "turn463244view2", "source_lines": "115-154", "fields": ["日期", "净值", "累计净值"], "unit": "CNY/share", "latest_reported_daily_change_pct": "-1.23"}
+  },
+  "instruments": [
+    {"code": "159995", "name": "华夏国证半导体芯片ETF", "observation_label": "半导体芯片产品观察", "bucket_type": "sector_product", "canonical_industry_code": null, "source_id": "chinaamc-159995"},
+    {"code": "515030", "name": "华夏中证新能源汽车ETF", "observation_label": "新能源汽车主题观察", "bucket_type": "cross_industry_theme", "canonical_industry_code": null, "source_id": "chinaamc-515030"},
+    {"code": "510330", "name": "华夏沪深300ETF", "observation_label": "宽基ETF参照", "bucket_type": "broad_market_proxy", "canonical_industry_code": null, "source_id": "chinaamc-510330"}
+  ],
+  "original_rows": [
+    {"code":"159995","日期":"2026-10-08","净值":"1.0038","累计净值":"2.0076"},
+    {"code":"159995","日期":"2026-10-09","净值":"0.9982","累计净值":"1.9964"},
+    {"code":"159995","日期":"2026-10-12","净值":"0.9739","累计净值":"1.9478"},
+    {"code":"159995","日期":"2026-10-13","净值":"0.9714","累计净值":"1.9428"},
+    {"code":"159995","日期":"2026-10-14","净值":"0.9379","累计净值":"1.8758"},
+    {"code":"159995","日期":"2026-10-15","净值":"0.9234","累计净值":"1.8468"},
+    {"code":"515030","日期":"2026-10-08","净值":"1.4503","累计净值":"1.4503"},
+    {"code":"515030","日期":"2026-10-09","净值":"1.4730","累计净值":"1.4730"},
+    {"code":"515030","日期":"2026-10-12","净值":"1.4433","累计净值":"1.4433"},
+    {"code":"515030","日期":"2026-10-13","净值":"1.4042","累计净值":"1.4042"},
+    {"code":"515030","日期":"2026-10-14","净值":"1.3679","累计净值":"1.3679"},
+    {"code":"515030","日期":"2026-10-15","净值":"1.3479","累计净值":"1.3479"},
+    {"code":"510330","日期":"2026-10-08","净值":"4.5699","累计净值":"2.2145"},
+    {"code":"510330","日期":"2026-10-09","净值":"4.5777","累计净值":"2.2177"},
+    {"code":"510330","日期":"2026-10-12","净值":"4.5469","累计净值":"2.2051"},
+    {"code":"510330","日期":"2026-10-13","净值":"4.5341","累计净值":"2.1999"},
+    {"code":"510330","日期":"2026-10-14","净值":"4.4727","累计净值":"2.1747"},
+    {"code":"510330","日期":"2026-10-15","净值":"4.4176","累计净值":"2.1522"}
+  ]
+}
