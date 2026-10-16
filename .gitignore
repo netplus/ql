@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+private_evidence/
+local_data/
+*.duckdb
+*.duckdb.wal
+*.parquet
+personal/
+research/p0/computed.json
+research/p0/test-results.txt
