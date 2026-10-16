@@ -110,6 +110,9 @@ def estimated_flow(previous_shares: Decimal | None, current_shares: Decimal | No
         return metric(None, "quarantined", "CNY", "date_alignment_failed")
     if split_ratio is None:
         return metric(None, "quarantined", "CNY", "event_basis_unverified")
+    previous_shares, current_shares, nav, split_ratio = (
+        decimal_value(value) for value in (previous_shares, current_shares, nav, split_ratio)
+    )
     if min(previous_shares, current_shares) < 0 or nav <= 0 or split_ratio <= 0:
         raise ValueError("Invalid flow inputs")
     return metric((current_shares - previous_shares * split_ratio) * nav,
@@ -147,7 +150,11 @@ def build(sample: dict[str, Any]) -> dict[str, Any]:
             source = sample["sources"][instrument["source_id"]]
             daily = changes["1"]["value"]
             reported = decimal_value(source["latest_reported_daily_change_pct"])
-            matches = None if daily is None else formatted(decimal_value(daily), 2) == formatted(reported, 2)
+            # Compare from unrounded inputs: rounding 6dp then 2dp can change the result.
+            raw_daily = None if daily is None else (
+                series[code][days[-1]] / series[code][days[-2]] - 1
+            ) * 100
+            matches = None if raw_daily is None else formatted(raw_daily, 2) == formatted(reported, 2)
             summaries.append({"code": code, "name": instrument["name"], "changes": changes,
                               "relative_to_510330_5_interval_pp": relative_result,
                               "latest_daily_matches_reported_rounding": matches,
