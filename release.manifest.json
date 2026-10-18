@@ -1,0 +1,15 @@
+{
+  "schema": "ql.public-shell/1",
+  "version": "p1.1-local-bundle/1",
+  "market_data_included": false,
+  "personal_data_included": false,
+  "files": {
+    ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app.js": "666b3d3f96e5dfb0fb7bde4202d53eea09d8c8017cbd3d29d27604c2415397ab",
+    "index.html": "3e0274e11dddfa81491f516e7f33ead5191664a941bb02062d3870a146c6874e",
+    "release.css": "d4ec649c35467b4e5c5db26c653ea9c45bcc13f7ebc30751247e010f0c2c63e1",
+    "release.js": "84131af892a844aaa11fde7d979b07535dc07144741673bcae15c3d5c6bcbca1",
+    "start.js": "e2ee806ac62b029c1f227af68be07341f51bd025ec6d1539db3ddc01755e7857",
+    "style.css": "ded5129c89dca033fa85ae58a60c9c042a41f9e77b8103cf1158d3ecf713e567"
+  }
+}

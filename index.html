@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light"><meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>ql · A股研究工作台</title>
+<link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./release.css">
+</head>
+<body>
+<a class="skip" href="#content">跳到主要内容</a>
+<aside class="sidebar">
+ <a class="brand" href="#/overview" aria-label="ql 首页"><span class="brandmark">q<span>l</span></span><span>研究工作台<small>MARKET OBSERVATORY</small></span></a>
+ <div class="navlabel">工作空间</div>
+ <nav aria-label="主导航" id="navigation">
+  <a data-route="overview" href="#/overview"><span class="navicon">▦</span><span>观察概览</span></a>
+  <a data-route="compare" href="#/compare"><span class="navicon">▤</span><span>方向比较</span></a>
+  <a data-route="detail" href="#/detail"><span class="navicon">⌁</span><span>产品详情</span></a>
+  <a data-route="watch" href="#/watch"><span class="navicon">☆</span><span>自选复盘</span></a>
+  <a data-route="methods" href="#/methods"><span class="navicon">⊙</span><span>数据方法</span></a>
+ </nav>
+ <div class="sidebottom"><span class="statusdot"></span>本地数据工作台<small>页面与数据分离 · 不自动更新<br>未连接券商，不执行交易</small><div class="version">ql / P1 · PAGE 02</div></div>
+</aside>
+<div class="workspace">
+ <header class="topbar"><span class="breadcrumb">工作空间 <span>/</span> <strong id="crumb">观察概览</strong></span><div class="topright"><span class="chip">本地数据</span><label class="datecontrol">截止日 <select id="asof" aria-label="观察截止日"></select></label></div></header>
+ <main id="content" tabindex="-1">
+<section class="dataset-bar" aria-label="市场数据包">
+<div class="dataset-info"><strong id="dataset-status">正在校验数据…</strong><small>文件仅在本机读取；非自动更新行情服务</small></div>
+<button class="primary" id="bundle-open">载入数据 ↑</button><button id="bundle-clear" disabled>移除标签页数据</button>
+<input id="bundle-file" type="file" accept=".json,application/json" hidden><p id="bundle-message" role="status" aria-live="polite"></p></section>
+  <div class="notice"><span class="notice-symbol">i</span><span id="notice-text">正在校验内置样例…</span><a href="#/methods">查看依据 ↗</a></div>
+  <div id="app" aria-busy="true"><div class="empty">正在加载页面数据…</div></div>
+  <noscript><div class="empty">需要启用 JavaScript 才能使用图表与筛选。此页面不访问外部数据接口。</div></noscript>
+ </main>
+ <footer>ql · 先看变化，再看证据。<span>Asia/Shanghai · 样例非投资建议</span></footer>
+</div>
+<dialog id="evidence-dialog" aria-labelledby="dialog-title"><div class="dialogtop"><h2 id="dialog-title">数据依据</h2><button id="close-dialog" class="iconbutton" aria-label="关闭数据依据">×</button></div><div id="dialog-content"></div></dialog>
+<dialog id="bundle-dialog" aria-labelledby="bundle-title"><div class="dialogtop"><h2 id="bundle-title">载入市场数据包</h2></div><div class="cardbody"><p id="bundle-confirm-text"></p><div class="personaltools gap"><button id="bundle-cancel">取消</button><button class="primary" id="bundle-accept">仅在本地载入</button></div></div></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script id="ql-data" type="application/json">null</script>
+<script defer src="./release.js"></script><script defer src="./start.js"></script>
+</body></html>
