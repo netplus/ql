@@ -1,0 +1,76 @@
+{
+  "schema": "ql.universe/1",
+  "benchmark_code": "510330",
+  "products": [
+    {
+      "code": "159995",
+      "exchange": "SZSE",
+      "label": "半导体芯片",
+      "name": "华夏国证半导体芯片ETF",
+      "group": "行业相关",
+      "basis": "unadjusted_nav",
+      "currency": "CNY",
+      "nav_url": "https://www.chinaamc.com/fund/159995/index.shtml"
+    },
+    {
+      "code": "515030",
+      "exchange": "SSE",
+      "label": "新能源汽车",
+      "name": "华夏中证新能源汽车ETF",
+      "group": "主题",
+      "basis": "unadjusted_nav",
+      "currency": "CNY",
+      "nav_url": "https://www.chinaamc.com/fund/515030/index.shtml"
+    },
+    {
+      "code": "510330",
+      "exchange": "SSE",
+      "label": "沪深300",
+      "name": "华夏沪深300ETF",
+      "group": "宽基",
+      "basis": "unadjusted_nav",
+      "currency": "CNY",
+      "nav_url": "https://www.chinaamc.com/fund/510330/index.shtml"
+    },
+    {
+      "code": "512010",
+      "exchange": "SSE",
+      "label": "沪深300医药",
+      "name": "易方达沪深300医药ETF",
+      "group": "行业相关",
+      "basis": "unadjusted_nav",
+      "currency": "CNY",
+      "nav_url": "https://www.efunds.com.cn/Mobile/fund/512010.shtml"
+    },
+    {
+      "code": "159819",
+      "exchange": "SZSE",
+      "label": "人工智能",
+      "name": "易方达中证人工智能主题ETF",
+      "group": "主题",
+      "basis": "unadjusted_nav",
+      "currency": "CNY",
+      "nav_url": "https://www.efunds.com.cn/Mobile/fund/159819.shtml"
+    },
+    {
+      "code": "510030",
+      "exchange": "SSE",
+      "label": "180价值",
+      "name": "华宝上证180价值ETF",
+      "group": "风格",
+      "basis": "unadjusted_nav",
+      "currency": "CNY",
+      "nav_url": "https://www.fsfund.com/fund/510030/fundDetail.shtml"
+    },
+    {
+      "code": "510050",
+      "exchange": "SSE",
+      "label": "上证50",
+      "name": "华夏上证50ETF",
+      "group": "宽基",
+      "basis": "unadjusted_nav",
+      "currency": "CNY",
+      "nav_url": "https://www.chinaamc.com/fund/510050/index.shtml"
+    }
+  ]
+}
