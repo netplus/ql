@@ -60,7 +60,7 @@ def build(output: Path, data_file: Path | None = None, approval_file: Path | Non
     engine = (ROOT/'web/market-data.js').read_text(encoding='utf-8')
     loader = (ROOT/'web/market-loader.js').read_text(encoding='utf-8')
     app = (ROOT/'web/market-app.js').read_text(encoding='utf-8')
-    bootstrap = 'window.qlStartMarketApp=()=>{\n'+app+'\n};\nQLMarketLoader.start(window.qlStartMarketApp);'
+    bootstrap = 'window.qlStartMarketApp=()=>{\n'+app+'\n};\nif(!window.QLMarketData||!window.QLMarketLoader){window.QLMarketBoot.fail();}else{QLMarketLoader.start(window.qlStartMarketApp);}'
     if '</script' in (boot+engine+loader+bootstrap).lower():
         raise ValueError('Unsafe script terminator')
     content = {'market-boot.js':boot.encode(), 'market-data.js':engine.encode(), 'market-loader.js':loader.encode(), 'market-app.js':bootstrap.encode(), 'style.css':css.encode()}

@@ -152,13 +152,18 @@ def run(output: Path, browser: str) -> dict:
                 check('native_notes_survive_browser_restart','SYNTHETIC NOTE' in page.locator('#app').inner_text())
                 ctx.close()
                 # Real resource corruption: Chrome must enforce SRI, not a route mock.
-                engine=next(public.glob('market-data.*.js'));engine.write_bytes(engine.read_bytes()+b'\n/* changed */')
-                ctx=pw.chromium.launch_persistent_context(str(base/'sri-profile'),executable_path=browser,headless=True)
-                page=ctx.pages[0];page.goto(url,wait_until='networkidle',timeout=15000)
-                page.locator('#market-reload').wait_for(state='visible',timeout=10000)
-                check('sri_failure_shows_recovery','页面未能完整启动' in page.locator('#app').inner_text())
-                check('sri_prevents_engine_execution',page.evaluate("typeof QLMarketData==='undefined'"))
-                ctx.close()
+                for stem in ['market-data','market-loader','market-app']:
+                    asset=next(public.glob(stem+'.*.js')); original_asset=asset.read_bytes()
+                    asset.write_bytes(original_asset+b'\n/* changed */')
+                    ctx=pw.chromium.launch_persistent_context(str(base/(stem+'-sri-profile')),
+                        executable_path=browser,headless=True)
+                    page=ctx.pages[0];page.goto(url,wait_until='networkidle',timeout=15000)
+                    page.locator('#market-reload').wait_for(state='visible',timeout=10000)
+                    check(stem+'_sri_failure_shows_recovery','页面未能完整启动' in page.locator('#app').inner_text())
+                    symbol={'market-data':'QLMarketData','market-loader':'QLMarketLoader',
+                            'market-app':'qlStartMarketApp'}[stem]
+                    check(stem+'_sri_prevents_execution',page.evaluate(f"typeof {symbol}==='undefined'"))
+                    ctx.close();asset.write_bytes(original_asset)
             result['passed']=True
             result['native_persistence_tested']=True
     except Exception as exc:

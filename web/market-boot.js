@@ -21,6 +21,11 @@ function fail(){
 root.addEventListener('error',e=>{
  if(e.target?.tagName==='SCRIPT'||(e.target===root&&/market-(?:data|loader|app)[.]/.test(e.filename||'')))fail();
 },true);
+// Integrity failures may occur while deferred scripts are still downloading,
+// before this listener exists. Verify dependencies after the defer queue drains.
+document.addEventListener('DOMContentLoaded',()=>{
+ if(!root.QLMarketData||!root.QLMarketLoader||typeof root.qlStartMarketApp!=='function')fail();
+},{once:true});
 timer=setTimeout(fail,18000);
 root.QLMarketBoot=Object.freeze({ready:()=>clearTimeout(timer),fail});
 })(globalThis);
