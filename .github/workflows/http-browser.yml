@@ -1,0 +1,53 @@
+name: Real HTTP browser acceptance
+on:
+  push:
+    branches: [feat/m1-http-browser]
+    paths:
+      - '.github/workflows/http-browser.yml'
+      - 'web/**'
+      - 'tools/test_market_http.py'
+      - 'tools/build_market_page.py'
+      - 'tests/test_market_http_build.py'
+permissions:
+  contents: read
+concurrency:
+  group: ql-http-browser-acceptance
+  cancel-in-progress: false
+jobs:
+  browser:
+    if: github.repository == 'netplus/ql' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Install pinned browser driver (use runner Chrome)
+        run: python3 -m pip install --disable-pip-version-check --no-input playwright==1.57.0
+      - name: Packaging and data regressions
+        run: |
+          python3 -m unittest discover -s tests -p test_market_http_build.py -v
+          python3 -m unittest discover -s tests -p 'test_nav*.py' -v
+          node --test tests/test_market_data.js
+      - name: Actual HTTP resources, native storage and browser restart
+        run: python3 tools/test_market_http.py --output "$RUNNER_TEMP/ql-http-result.json"
+      - name: One read-only Pages URL probe (not deployment)
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error
+          url='https://netplus.github.io/ql/'
+          result={'url':url,'probe':'public_http_only','deployment_verified':False}
+          try:
+              with urllib.request.urlopen(url,timeout=15) as r:
+                  result.update(http_status=r.status,contains_ql_app=b'id="app"' in r.read(131072))
+          except urllib.error.HTTPError as e:result['http_status']=e.code
+          except Exception as e:result['error_class']=type(e).__name__
+          print(json.dumps(result))
+          PY
+      - name: Record synthetic-only acceptance summary
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/ql-http-result.json" ]; then
+            cat "$RUNNER_TEMP/ql-http-result.json" >> "$GITHUB_STEP_SUMMARY"
+          fi
