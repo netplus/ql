@@ -1,0 +1,51 @@
+name: Bounded NAV runtime acceptance
+on:
+  push:
+    branches: [feat/p1-runtime-acceptance]
+    paths:
+      - .github/workflows/nav-acceptance.yml
+      - tools/run_nav_cycle.py
+      - tools/collect_nav.py
+      - tests/test_nav_cycle.py
+      - config/**
+permissions:
+  contents: read
+concurrency:
+  group: ql-nav-runtime-acceptance
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    if: github.repository == 'netplus/ql' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      QL_CYCLE_DIR: ${{ runner.temp }}/ql-nav-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout reviewed feature commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Test cycle and existing decimal model (synthetic fixtures)
+        run: |
+          python3 -m unittest discover -s tests -p test_nav_cycle.py -v
+          python3 -m unittest discover -s tests -p test_nav_ingest.py -v
+          node --test tests/test_market_data.js
+      - name: Read two official endpoints once; build private preview if complete
+        run: >-
+          python3 tools/run_nav_cycle.py
+          --codes 159995,510330
+          --start 2026-10-08 --end 2026-10-23
+          --execute --output "$QL_CYCLE_DIR"
+      - name: Record non-market diagnostic only
+        if: always()
+        run: |
+          if [ -f "$QL_CYCLE_DIR/summary.json" ]; then
+            printf '## One-shot NAV acceptance (not daily service)\n```json\n' >> "$GITHUB_STEP_SUMMARY"
+            cat "$QL_CYCLE_DIR/summary.json" >> "$GITHUB_STEP_SUMMARY"
+            printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf 'Cycle did not produce a summary; inspect the failed step.\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Remove temporary raw data and preview (no artifact upload)
+        if: always()
+        run: rm -rf -- "$QL_CYCLE_DIR"
