@@ -1,0 +1,36 @@
+name: Verify v3.1 public Page
+on:
+  push:
+    branches: [feat/release-v31]
+    paths: [.github/workflows/verify-v31-live.yml]
+permissions:
+  contents: read
+concurrency:
+  group: ql-verify-v31
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout pinned verifier
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: fe69c32f5f4a6e7be02f2168782dc7a88779eb9a
+          persist-credentials: false
+      - name: Checkout exact production bytes
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: fd5dd6a5064c0235d4f54e98d268b1a19c7ef45c
+          path: expected
+          persist-credentials: false
+      - name: Install pinned browser driver
+        run: python3 -m pip install --disable-pip-version-check --no-input playwright==1.57.0
+      - name: Verify public assets and native browser interactions
+        run: python3 tools/verify_v31_live.py --expected expected --output "$RUNNER_TEMP/ql-v31-live.json"
+      - name: Record synthetic-only verification result
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/ql-v31-live.json" ]; then
+            cat "$RUNNER_TEMP/ql-v31-live.json" >> "$GITHUB_STEP_SUMMARY"
+          fi
