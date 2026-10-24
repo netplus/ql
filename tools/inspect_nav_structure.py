@@ -35,8 +35,22 @@ def main(directory):
             if u.hostname==urlsplit(r['url']).hostname and not u.username and not u.password:
                 assets.append(u.scheme+'://'+u.netloc+u.path)
         dates=sorted(set(re.findall(r'\b20\d\d-\d\d-\d\d\b',html)))
+        # Show structural markup around NAV headings, with all numeric values removed.
+        safe = re.sub(r'<script\b[^>]*>.*?</script\s*>', '', html, flags=re.I|re.S)
+        safe = re.sub(r'<style\b[^>]*>.*?</style\s*>', '', safe, flags=re.I|re.S)
+        safe = re.sub(r'<!--.*?-->', '', safe, flags=re.S)
+        safe = re.sub(r'\s+', ' ', safe)
+        excerpts=[]
+        for heading in ('历史净值','累计净值','单位净值'):
+            pos=safe.find(heading)
+            if pos>=0:
+                snippet=safe[max(0,pos-200):pos+1400]
+                # Whitelist structural attributes; remove href/src, handlers and hidden values.
+                snippet=re.sub(r'<([^>]+)>',lambda m:'<'+m.group(1).split()[0]+''.join(' '+x for x in re.findall(r'(?:class|id)="[^"<>]*"',m.group(1)))+'>',snippet)
+                snippet=re.sub(r'\d+(?:[.,/-]\d+)*', '#', snippet)
+                excerpts.append({'heading':heading,'structure':snippet})
         print(json.dumps({'code':r['code'],'table_count':len(p.tables),'table_structure':headers,
                          'same_host_scripts':assets,'dates_present_count':len(dates),
-                         'last_date_string':dates[-1] if dates else None},ensure_ascii=False))
+                         'last_date_string':dates[-1] if dates else None,'nav_structure':excerpts},ensure_ascii=False))
 
 if __name__=='__main__':main(sys.argv[1])
