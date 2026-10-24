@@ -1,0 +1,101 @@
+name: Stage reviewed Page v3.1
+on:
+  push:
+    branches: [feat/release-v31]
+    paths: [.github/workflows/stage-v31.yml]
+permissions:
+  contents: read
+concurrency:
+  group: ql-stage-v31
+  cancel-in-progress: false
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact reviewed application
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: 2034ea154b51de4fa7176cb0f7cebbcc0822a2c2
+          path: source
+          persist-credentials: false
+      - name: Recheck application packaging and data protocol
+        working-directory: source
+        run: |
+          python3 -m unittest discover -s tests -p test_market_http_build.py -v
+          node --test tests/test_market_data.js
+          python3 tools/build_market_page.py --output "$RUNNER_TEMP/ql-v31-build"
+      - name: Checkout previous production as candidate parent
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: 2285d07e927bae795a9e7d3e898cca80428584d6
+          path: candidate
+          persist-credentials: true
+      - name: Validate application-only files and retain cached assets
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, re, shutil, subprocess
+          from pathlib import Path
+          public = Path(os.environ['RUNNER_TEMP']) / 'ql-v31-build/public'
+          target = Path('candidate')
+          sha = lambda b: hashlib.sha256(b).hexdigest()
+          expected = {'index.html', '.nojekyll', 'market.manifest.json', 'release.manifest.json'}
+          patterns = [r'market-boot\.[a-f0-9]{16}\.js', r'market-data\.[a-f0-9]{16}\.js',
+                      r'market-loader\.[a-f0-9]{16}\.js', r'market-app\.[a-f0-9]{16}\.js',
+                      r'style\.[a-f0-9]{16}\.css']
+          for pattern in patterns:
+              matches = [p.name for p in public.iterdir() if re.fullmatch(pattern, p.name)]
+              if len(matches) != 1: raise ValueError('Unexpected asset inventory')
+              expected.update(matches)
+          if {p.name for p in public.iterdir()} != expected: raise ValueError('Unexpected public file')
+          current = json.loads((public/'release.manifest.json').read_text())
+          if current['schema'] != 'ql.market-release/2' or current['market_data_included'] is not False:
+              raise ValueError('Not an application-only build')
+          feed = json.loads((public/'market.manifest.json').read_text())
+          if feed != {'schema':'ql.market-manifest/2','state':'unpublished'}:
+              raise ValueError('Market publication was not authorized')
+          for name, digest in current['files'].items():
+              p = public/name
+              if p.is_symlink() or not p.is_file() or p.stat().st_size > 524288 or sha(p.read_bytes()) != digest:
+                  raise ValueError('Build inventory mismatch')
+          old = json.loads((target/'release.manifest.json').read_text())
+          if old['market_data_included'] is not False or old['personal_data_included'] is not False:
+              raise ValueError('Previous deployment not data-free')
+          tracked = subprocess.check_output(['git','-C',str(target),'ls-files','-z']).decode().split('\0')[:-1]
+          if set(tracked) != set(old['files']) | {'release.manifest.json'}:
+              raise ValueError('Unexpected previous files')
+          for name, digest in old['files'].items():
+              p = target/name
+              if '/' in name or p.is_symlink() or not p.is_file() or sha(p.read_bytes()) != digest:
+                  raise ValueError('Previous deployment integrity mismatch')
+          for name in expected: shutil.copyfile(public/name, target/name)
+          provenance = {'schema':'ql.deployment-info/1','application_version':'3.1',
+                        'source_sha':'2034ea154b51de4fa7176cb0f7cebbcc0822a2c2',
+                        'previous_deployment_sha':'2285d07e927bae795a9e7d3e898cca80428584d6',
+                        'market_data_included':False,'personal_data_included':False,
+                        'daily_updates_enabled':False,'candidate_run_id':os.environ['GITHUB_RUN_ID']}
+          (target/'deployment.json').write_text(json.dumps(provenance,sort_keys=True,separators=(',',':'))+'\n')
+          names = set(tracked) | expected | {'deployment.json'}
+          files = {n:sha((target/n).read_bytes()) for n in sorted(names) if n != 'release.manifest.json'}
+          current.update(application_version='3.1', source_sha=provenance['source_sha'],
+                         previous_deployment_sha=provenance['previous_deployment_sha'],
+                         personal_data_included=False, files=files)
+          (target/'release.manifest.json').write_text(json.dumps(current,sort_keys=True,separators=(',',':'))+'\n')
+          print(json.dumps({'public_files':len(names),'market_data_included':False,
+                            'source_sha':provenance['source_sha'], 'old_assets_retained':True}))
+          PY
+      - name: Commit candidate only; do not update production
+        working-directory: candidate
+        run: |
+          git switch -c release/v3.1-candidate-20261024
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m 'build: prepare reviewed v3.1 application-only Pages release' -m 'Source 2034ea1; previous deployment 2285d07. Preserve existing cached assets. No market data, personal data, ingestion or schedule. Production promotion is a separate reviewed fast-forward.'
+          git push origin HEAD:refs/heads/release/v3.1-candidate-20261024
+          printf 'Candidate: `%s`\n' "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Production branch was not modified by this job.\n' >> "$GITHUB_STEP_SUMMARY"
