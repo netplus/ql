@@ -7,6 +7,7 @@ on:
       - tools/run_nav_cycle.py
       - tools/collect_nav.py
       - tools/nav_transport.py
+      - tools/inspect_nav_structure.py
       - tests/test_nav_decode.py
       - tests/test_nav_cycle.py
       - config/**
@@ -67,6 +68,9 @@ jobs:
                         'http_error' if e=='HTTPError' else 'other')
                   print(json.dumps({'code':r['code'],'error_class':e,'failure_kind':kind}))
           PYCODE
+      - name: Inspect only static structure, not market numbers
+        if: always()
+        run: python3 -m tools.inspect_nav_structure "$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/raw"
       - name: Remove temporary raw data and preview (no artifact upload)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
