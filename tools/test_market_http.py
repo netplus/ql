@@ -141,7 +141,7 @@ def run(output: Path, browser: str) -> dict:
                 original=(public/manifest['file']).read_bytes()
                 (public/manifest['file']).write_bytes(b' '+original[1:])
                 page.locator('#market-refresh').click()
-                page.wait_for_function("document.querySelector('#market-message').dataset.error==='true'")
+                page.locator('#market-message[data-error="true"]').wait_for(state='attached')
                 check('bad_digest_preserves_loaded_dataset',page.evaluate("JSON.parse(document.querySelector('#ql-data').textContent).version")=='http-synthetic/2')
                 check('bad_digest_preserves_notes','SYNTHETIC NOTE' in page.evaluate("localStorage.getItem('ql.personal.v1')"))
                 (public/manifest['file']).write_bytes(original)
