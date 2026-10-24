@@ -1,0 +1,52 @@
+name: Calendar and bounded retry acceptance
+on:
+  push:
+    branches: [feat/m2-calendar-retry]
+    paths:
+      - .github/workflows/calendar-retry.yml
+      - tools/retry_nav_cycle.py
+      - tools/market_calendar.py
+      - tests/test_calendar_retry.py
+      - config/market-calendar-2026.json
+permissions:
+  contents: read
+concurrency:
+  group: ql-calendar-retry-acceptance
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    if: github.repository == 'netplus/ql'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Calendar, retry and existing ingestion regressions
+        run: |
+          python3 -m unittest discover -s tests -p test_calendar_retry.py -v
+          python3 -m unittest discover -s tests -p 'test_nav*.py' -v
+          node --test tests/test_market_data.js
+      - name: Four official product pages; Shanghai cutoff and bounded retries
+        run: |
+          umask 077
+          python3 tools/retry_nav_cycle.py --codes 159995,510330,515030,510050 --start 2026-10-08 --execute --output "$RUNNER_TEMP/ql-calendar-cycle"
+      - name: Record status, counts and hashes only
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'ql-calendar-cycle'
+          for f in sorted(p.glob('attempt-*/summary.json')):
+              print(f.parent.name)
+              print(json.dumps(json.loads(f.read_text()),sort_keys=True))
+          if (p/'cycle.json').is_file():
+              with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out:
+                  out.write('## Single-run acceptance, not daily service\n```json\n')
+                  out.write((p/'cycle.json').read_text())
+                  out.write('\n```\n')
+          PY
+      - name: Remove temporary market plaintext; no artifact publication
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/ql-calendar-cycle"
