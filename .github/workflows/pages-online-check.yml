@@ -1,0 +1,110 @@
+name: Verify first public Pages deployment
+on:
+  push:
+    branches: [feat/m1-http-browser]
+    paths: [.github/workflows/pages-online-check.yml]
+permissions:
+  contents: read
+concurrency:
+  group: ql-first-pages-online-check
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout reviewed read-only verifier
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: 7d2b8abeccd30bfbb0e1dfe780bd33121c078fe3
+          persist-credentials: false
+      - name: Checkout exact deployed application
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: 2285d07e927bae795a9e7d3e898cca80428584d6
+          path: expected-pages
+          persist-credentials: false
+      - name: Verify public HTTPS resources against deployed Git bytes
+        run: |
+          mkdir "$RUNNER_TEMP/ql-pages-expected"
+          git -C expected-pages archive HEAD | tar -x -C "$RUNNER_TEMP/ql-pages-expected"
+          python3 tools/verify_pages.py --url https://netplus.github.io/ql/ --expected "$RUNNER_TEMP/ql-pages-expected" --output "$RUNNER_TEMP/ql-pages-http.json"
+      - name: Install pinned browser driver
+        run: python3 -m pip install --disable-pip-version-check --no-input playwright==1.57.0
+      - name: Visit actual public site in Chrome without loading market or personal data
+        run: |
+          python3 - <<'PY'
+          import json, os, shutil
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.parse import urlparse
+          from playwright.sync_api import sync_playwright
+          url = 'https://netplus.github.io/ql/'
+          result = {'schema':'ql.public-pages-smoke/1', 'url':url,
+                    'deployment_sha':'2285d07e927bae795a9e7d3e898cca80428584d6',
+                    'checked_at':datetime.now(timezone.utc).isoformat(),
+                    'mode':'real_public_https', 'data_loaded':False,
+                    'real_device_tested':False, 'private_storage_tested':False,
+                    'html_injection':False, 'route_mocking':False,
+                    'passed':False, 'checks':[]}
+          def check(name, condition):
+              result['checks'].append({'name':name,'passed':bool(condition)})
+              if not condition:
+                  raise AssertionError(name)
+          try:
+              browser = shutil.which('google-chrome') or shutil.which('chromium')
+              if browser is None:
+                  raise RuntimeError('Chrome executable not available')
+              with sync_playwright() as pw:
+                  b = pw.chromium.launch(executable_path=browser, headless=True)
+                  ctx = b.new_context(viewport={'width':1440,'height':1000})
+                  page = ctx.new_page()
+                  errors, requests, assets = [], [], []
+                  page.on('pageerror', lambda e: errors.append(str(e)[:200]))
+                  page.on('request', lambda r: requests.append(r.url))
+                  def response(r):
+                      if urlparse(r.url).path.endswith(('.js','.css')):
+                          assets.append({'url':r.url,'status':r.status})
+                  page.on('response', response)
+                  doc = page.goto(url, wait_until='networkidle', timeout=30000)
+                  check('public_home_http_200',doc is not None and doc.status==200)
+                  page.locator('#welcome-import').wait_for(state='visible',timeout=15000)
+                  check('application_title','A股研究工作台' in page.title())
+                  check('explicit_no_data_state','未载入市场数据' in page.locator('#dataset-status').inner_text())
+                  check('loading_state_finished',page.locator('#app').get_attribute('aria-busy')=='false')
+                  check('date_disabled_without_data',page.locator('#asof').is_disabled())
+                  check('actual_js_css_loaded',len(assets)>=4 and all(x['status']==200 for x in assets))
+                  check('no_foreign_application_requests',all(urlparse(x).netloc=='netplus.github.io' for x in requests))
+                  with page.expect_file_chooser() as chooser:
+                      page.locator('#bundle-open').click()
+                  check('local_file_picker_opens',chooser.value is not None)
+                  page.locator('[data-route="compare"]').first.click()
+                  check('no_data_navigation_explained','先载入本地市场数据包' in page.locator('#bundle-message').inner_text())
+                  for width, height in [(1440,1000),(1024,768),(768,1024),(430,932),(360,800)]:
+                      page.set_viewport_size({'width':width,'height':height})
+                      check('no_horizontal_overflow_'+str(width),page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
+                  page.reload(wait_until='networkidle',timeout=30000)
+                  page.locator('#welcome-import').wait_for(state='visible',timeout=15000)
+                  check('public_reload_recovers_empty_state','未载入市场数据' in page.locator('#dataset-status').inner_text())
+                  check('no_uncaught_application_errors',not errors)
+                  result['asset_responses']=assets
+                  result['passed']=True
+                  ctx.close();b.close()
+          except Exception as e:
+              result['failure_type']=type(e).__name__
+              result['failure']=str(e).splitlines()[0][:240]
+          finally:
+              result['passed_checks']=sum(x['passed'] for x in result['checks'])
+              (Path(os.environ['RUNNER_TEMP'])/'ql-pages-browser.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+              print(json.dumps(result,ensure_ascii=False))
+          raise SystemExit(0 if result['passed'] else 2)
+          PY
+      - name: Record verification results, not a deployment
+        if: always()
+        run: |
+          for report in "$RUNNER_TEMP/ql-pages-http.json" "$RUNNER_TEMP/ql-pages-browser.json"; do
+            if [ -f "$report" ]; then
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+              printf '\n' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done

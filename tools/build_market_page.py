@@ -56,13 +56,14 @@ def build(output: Path, data_file: Path | None = None, approval_file: Path | Non
         raise ValueError('Use a new output directory; previous releases are not overwritten')
     bundle = canonical(data_file.read_bytes()) if data_file else None
     css = (ROOT/'web/style.css').read_text(encoding='utf-8') + STYLE
+    boot = (ROOT/'web/market-boot.js').read_text(encoding='utf-8')
     engine = (ROOT/'web/market-data.js').read_text(encoding='utf-8')
     loader = (ROOT/'web/market-loader.js').read_text(encoding='utf-8')
     app = (ROOT/'web/market-app.js').read_text(encoding='utf-8')
-    bootstrap = 'window.qlStartMarketApp=()=>{\n'+app+'\n};\nQLMarketLoader.start(window.qlStartMarketApp);'
-    if '</script' in (engine+loader+bootstrap).lower():
+    bootstrap = 'window.qlStartMarketApp=()=>{\n'+app+'\n};\nif(!window.QLMarketData||!window.QLMarketLoader){window.QLMarketBoot.fail();}else{QLMarketLoader.start(window.qlStartMarketApp);}'
+    if '</script' in (boot+engine+loader+bootstrap).lower():
         raise ValueError('Unsafe script terminator')
-    content = {'market-data.js':engine.encode(), 'market-loader.js':loader.encode(), 'market-app.js':bootstrap.encode(), 'style.css':css.encode()}
+    content = {'market-boot.js':boot.encode(), 'market-data.js':engine.encode(), 'market-loader.js':loader.encode(), 'market-app.js':bootstrap.encode(), 'style.css':css.encode()}
     assets = {}; names = {}
     for name, raw in content.items():
         stem, suffix = name.rsplit('.',1)
@@ -71,7 +72,7 @@ def build(output: Path, data_file: Path | None = None, approval_file: Path | Non
     shell = template('same-origin').replace("connect-src 'none'", "connect-src 'self'").replace("script-src 'unsafe-inline'", "script-src 'self'").replace("style-src 'unsafe-inline'", "style-src 'self' 'unsafe-inline'")
     integrity = lambda n: 'sha384-'+base64.b64encode(hashlib.sha384(content[n]).digest()).decode()
     shell = shell.replace('<style>/*__CSS__*/</style>', f'<link rel="stylesheet" href="./{names["style.css"]}" integrity="{integrity("style.css")}">').replace('__PAYLOAD__','null')
-    scripts = ''.join(f'<script defer src="./{names[n]}" integrity="{integrity(n)}"></script>' for n in ['market-data.js','market-loader.js','market-app.js'])
+    scripts = ''.join(f'<script defer src="./{names[n]}" integrity="{integrity(n)}"></script>' for n in ['market-boot.js','market-data.js','market-loader.js','market-app.js'])
     shell = shell.replace('<script>/*__APP__*/</script>',scripts)
     assets['index.html'] = shell.encode(); assets['.nojekyll'] = b''
     manifest = {'schema':'ql.market-manifest/2','state':'unpublished'}
@@ -93,7 +94,7 @@ def build(output: Path, data_file: Path | None = None, approval_file: Path | Non
     try:
         public=stage/'public'; public.mkdir()
         for name,raw in assets.items(): (public/name).write_bytes(raw)
-        preview=template('embedded').replace('/*__CSS__*/',css).replace('__PAYLOAD__',encoded(bundle)).replace('/*__APP__*/',engine+'\n'+loader+'\n'+bootstrap)
+        preview=template('embedded').replace('/*__CSS__*/',css).replace('__PAYLOAD__',encoded(bundle)).replace('/*__APP__*/',boot+'\n'+engine+'\n'+loader+'\n'+bootstrap)
         (stage/'preview.html').write_text(preview,encoding='utf-8')
         if bundle: (stage/'private-bundle.json').write_text(encoded(bundle),encoding='utf-8')
         stage.rename(output)
