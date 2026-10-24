@@ -45,6 +45,25 @@ jobs:
           else
             printf 'Cycle did not produce a summary; inspect the failed step.\n' >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Classify failure without exposing source content
+        if: always()
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, re
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP']) / ('ql-nav-'+os.environ['GITHUB_RUN_ID']+'-'+os.environ['GITHUB_RUN_ATTEMPT']) / 'raw/probe.json'
+          if p.exists():
+              for r in json.loads(p.read_text())['results']:
+                  e=r.get('error_class','none'); message=r.get('reason','').lower()
+                  if not re.fullmatch('[A-Za-z]{1,80}',e): e='OtherError'
+                  kind=('tls_certificate_validation_failed' if 'certificate_verify_failed' in message else
+                        'tls_handshake_failed' if 'ssl' in message else
+                        'text_decoding_failed' if e=='UnicodeDecodeError' else
+                        'dns_resolution_failed' if 'name resolution' in message else
+                        'timeout' if 'timed out' in message else
+                        'http_error' if e=='HTTPError' else 'other')
+                  print(json.dumps({'code':r['code'],'error_class':e,'failure_kind':kind}))
+          PYCODE
       - name: Remove temporary raw data and preview (no artifact upload)
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
