@@ -44,13 +44,49 @@ class Tables(HTMLParser):
         elif tag=='table' and self.table is not None:
             self.tables.append(self.table);self.table=None
 
+class DivTables(HTMLParser):
+    """Issuer class-based table/tr/td markup observed in real HTTP responses.
+
+    Only complete rows inside a table-class div are emitted. Header-based field
+    selection remains in parse_nav; a performance or cumulative-only grid does
+    not become unit NAV simply because it contains numbers.
+    """
+    def __init__(self):
+        super().__init__(); self.tables=[]; self.depth=0
+        self.table=None; self.row=None; self.cell=None
+        self.table_depth=None; self.row_depth=None; self.cell_depth=None
+    def handle_starttag(self,tag,attrs):
+        if tag!='div': return
+        self.depth+=1
+        classes=set((dict(attrs).get('class') or '').split())
+        if 'table' in classes:
+            if self.table is not None: raise ValueError('nested_div_table')
+            self.table=[];self.table_depth=self.depth
+        elif self.table is not None and 'tr' in classes:
+            if self.row is not None: raise ValueError('nested_div_row')
+            self.row=[];self.row_depth=self.depth
+        elif self.row is not None and 'td' in classes:
+            if self.cell is not None: raise ValueError('nested_div_cell')
+            self.cell=[];self.cell_depth=self.depth
+    def handle_data(self,data):
+        if self.cell is not None:self.cell.append(data)
+    def handle_endtag(self,tag):
+        if tag!='div':return
+        if self.depth==self.cell_depth:
+            self.row.append(''.join(self.cell).strip());self.cell=None;self.cell_depth=None
+        if self.depth==self.row_depth:
+            self.table.append(self.row);self.row=None;self.row_depth=None
+        if self.depth==self.table_depth:
+            self.tables.append(self.table);self.table=None;self.table_depth=None
+        self.depth-=1
+
 def parse_nav(html:str,code:str,start:str,end:str)->list[dict]:
     if not re.fullmatch(r'\d{6}',code) or not re.search(r'(?<!\d)'+code+r'(?!\d)',html):
         raise ValueError('fund_code_not_confirmed')
     start_day,end_day=date.fromisoformat(start),date.fromisoformat(end)
     if start_day>end_day:raise ValueError('reversed_interval')
-    p=Tables();p.feed(html);found={}
-    for table in p.tables:
+    p=Tables();p.feed(html);div=DivTables();div.feed(html);found={}
+    for table in p.tables+div.tables:
         nav_col=None;date_col=None
         for row in table:
             headings=[re.sub(r'\s+','',x) for x in row]

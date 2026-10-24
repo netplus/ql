@@ -75,4 +75,28 @@ class DecodeTests(unittest.TestCase):
             bundle,checks=assemble(config,plan,{'results':results},d)
             self.assertEqual(len(bundle['products']),2);self.assertEqual(len(checks),2)
 
+class DivMarkupTests(unittest.TestCase):
+    def grid(self,headers=('日期','净值','累计净值'),values=('2026-10-23','1.2345','9.8765')):
+        row=lambda values:'<div class="tr">'+''.join('<div class="td"><span>'+v+'</span></div>' for v in values)+'</div>'
+        return '<h1>159995 synthetic</h1><div class="table table3"><div class="th">'+row(headers)+'</div><div class="scroll-tab"><div class="tb">'+row(values)+'</div></div></div>'
+    def parse(self,html):return collect_nav.parse_nav(html,'159995','2026-10-22','2026-10-23')
+    def test_div_nav_not_cumulative(self):
+        self.assertEqual(self.parse(self.grid())[0]['unit_nav_cny'],'1.2345')
+    def test_cumulative_only_rejected(self):
+        with self.assertRaisesRegex(ValueError,'no_dated_NAV_table'):
+            self.parse(self.grid(('日期','累计净值'),('2026-10-23','9.8765')))
+    def test_performance_grid_ignored(self):
+        with self.assertRaisesRegex(ValueError,'no_dated_NAV_table'):
+            self.parse(self.grid(('项目','净值增长率(%)'),('过去一周','1.23')))
+    def test_conflicting_native_and_div_rejected(self):
+        other='<table><tr><th>日期</th><th>净值</th></tr><tr><td>2026-10-23</td><td>2</td></tr></table>'
+        with self.assertRaisesRegex(ValueError,'conflicting_duplicate'):self.parse(self.grid()+other)
+    def test_negative_div_nav_rejected(self):
+        with self.assertRaisesRegex(ValueError,'invalid_NAV'):self.parse(self.grid(values=('2026-10-23','-1','9')))
+    def test_duplicate_equal_values_deduplicated(self):
+        self.assertEqual(len(self.parse(self.grid()+self.grid())),1)
+    def test_tableless_loose_rows_rejected(self):
+        with self.assertRaisesRegex(ValueError,'no_dated_NAV_table'):
+            self.parse(self.grid().replace('class="table table3"','class="not-a-table"'))
+
 if __name__=='__main__':unittest.main()
