@@ -6,6 +6,8 @@ on:
       - .github/workflows/nav-acceptance.yml
       - tools/run_nav_cycle.py
       - tools/collect_nav.py
+      - tools/nav_transport.py
+      - tests/test_nav_decode.py
       - tests/test_nav_cycle.py
       - config/**
 permissions:
@@ -27,6 +29,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p test_nav_cycle.py -v
           python3 -m unittest discover -s tests -p test_nav_ingest.py -v
+          python3 -m unittest discover -s tests -p test_nav_decode.py -v
           node --test tests/test_market_data.js
       - name: Read two official endpoints once; build private preview if complete
         run: >-

@@ -18,6 +18,10 @@ from decimal import Decimal
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
+try:
+    from tools.nav_transport import decode_html
+except ModuleNotFoundError:
+    from nav_transport import decode_html
 
 HOSTS = {'www.chinaamc.com','www.efunds.com.cn','www.fsfund.com'}
 LIMIT = 2 * 1024 * 1024
@@ -90,17 +94,21 @@ def acquire(requests:list[dict],start:str,end:str,output:Path,*,runtime_id:str="
         now=lambda:datetime.now(timezone.utc).isoformat(timespec='seconds')
         result={**item,'started_at':now(),'status':'error','row_count':0,'raw_response_archived':False,'mode':'http_response'}
         try:
-            req=urllib.request.Request(item['url'],headers={'User-Agent':'ql-personal-research/0.2 (bounded data feasibility probe)','Accept':'text/html'})
+            req=urllib.request.Request(item['url'],headers={'User-Agent':'ql-personal-research/0.2 (bounded data feasibility probe)','Accept':'text/html','Accept-Encoding':'identity'})
             with opener.open(req,timeout=12) as r:
                 if r.geturl()!=item['url'] or r.status!=200:raise ValueError('unexpected_HTTP_status_or_redirect')
                 if r.headers.get_content_type()!='text/html':raise ValueError('unexpected_MIME')
                 raw=r.read(LIMIT+1)
                 if len(raw)>LIMIT:raise ValueError('response_too_large')
-                encoding=r.headers.get_content_charset() or 'utf-8'
-                if encoding.lower() not in ('utf-8','utf8','gbk','gb2312','gb18030'):raise ValueError('unsupported_encoding')
-                html=raw.decode(encoding)
+                header_charset=r.headers.get_content_charset()
+                content_encoding=r.headers.get('Content-Encoding')
             path=output/(item['code']+'.html');path.write_bytes(raw)
-            result.update(raw_response_archived=True,raw_sha256=hashlib.sha256(raw).hexdigest(),raw_file=path.name,encoding=encoding,http_status=200,response_bytes=len(raw))
+            # Preserve original wire bytes before any text conversion can fail.
+            result.update(raw_response_archived=True,raw_sha256=hashlib.sha256(raw).hexdigest(),
+                          raw_file=path.name,http_status=200,response_bytes=len(raw),
+                          header_charset=header_charset,content_encoding=content_encoding or 'identity')
+            html,decoding=decode_html(raw,header_charset,content_encoding)
+            result.update(decoding)
             rows=parse_nav(html,item['code'],start,end)
             (output/(item['code']+'.rows.json')).write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n')
             result.update(status='observed' if rows[-1]['trade_date']==end else 'stale',row_count=len(rows),latest_observed_date=rows[-1]['trade_date'])

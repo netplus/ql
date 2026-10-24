@@ -72,11 +72,15 @@ def reason(result: dict) -> str | None:
         return 'dns_resolution_failed'
     if 'timed out' in message or 'timeout' in message:
         return 'request_timeout'
+    if result.get('error_class') == 'UnicodeDecodeError':
+        return 'text_decoding_failed'
     if result.get('error_class') == 'HTTPError':
         return 'http_error'
     known = ('no_dated_NAV_table_in_HTTP_response', 'fund_code_not_confirmed',
              'conflicting_duplicate', 'invalid_NAV', 'unexpected_MIME',
-             'unsupported_encoding', 'response_too_large', 'unexpected_HTTP_status_or_redirect')
+             'unsupported_encoding', 'response_too_large', 'unexpected_HTTP_status_or_redirect',
+             'unsupported_content_encoding', 'decoded_response_too_large',
+             'undeclared_compressed_response', 'conflicting_meta_charset', 'conflicting_bom_charset')
     for code in known:
         if code.lower() in message:
             return code
@@ -110,7 +114,10 @@ def assemble(config: dict, planned: dict, report: dict, raw_dir: Path) -> tuple[
         encoding = r.get('encoding')
         if not isinstance(encoding, str) or encoding.lower() not in ('utf-8', 'utf8', 'gbk', 'gb2312', 'gb18030'):
             raise CycleError('encoding_evidence_missing')
-        rows = collect_nav.parse_nav(raw.decode(encoding), code, planned['start'], planned['end'])
+        html, decoding = collect_nav.decode_html(raw, r.get('header_charset'), r.get('content_encoding'))
+        if encoding != decoding['encoding']:
+            raise CycleError('encoding_evidence_mismatch')
+        rows = collect_nav.parse_nav(html, code, planned['start'], planned['end'])
         if rows_path.stat().st_size > collect_nav.LIMIT:
             raise CycleError('rows_too_large')
         if rows != json.loads(rows_path.read_text(encoding='utf-8')) or len(rows) != r.get('row_count'):
@@ -151,7 +158,7 @@ def execute(config: dict, planned: dict, output: Path) -> dict:
         for r in report['results']:
             summary['requests'].append({k: r.get(k) for k in (
                 'code', 'status', 'row_count', 'latest_observed_date', 'raw_sha256',
-                'http_status', 'raw_response_archived')})
+                'http_status', 'raw_response_archived', 'encoding', 'encoding_source', 'content_encoding')})
             summary['requests'][-1]['reason_code'] = reason(r)
         bundle, checks = assemble(config, planned, report, output / 'raw')
         file = output / 'market.private.json'; write_json(file, bundle)
