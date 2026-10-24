@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-transport="same-origin">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light"><meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>ql · A股研究工作台</title>
-<link rel="stylesheet" href="./style.ded5129c89dca033.css" integrity="sha256-3tUSnIncoDP6ha5YpgycBCpB+ed7gQPPEVjT7PcT5Wc=" crossorigin="anonymous"><link rel="stylesheet" href="./release.d4ec649c35467b4e.css" integrity="sha256-1OxknDVGe05cXbJsZT6pxFvME/frwwdRJH4BDwwsY+E=" crossorigin="anonymous">
+<link rel="stylesheet" href="./style.eaebaaae6315a8ff.css" integrity="sha384-YPj1lTOf6NFtMInsk/N0XkRkMY2aASByBk+58XKIrY0XuL9Rp8NoToadG9dVuj7c">
 </head>
 <body>
 <a class="skip" href="#content">跳到主要内容</a>
@@ -19,27 +19,19 @@
   <a data-route="watch" href="#/watch"><span class="navicon">☆</span><span>自选复盘</span></a>
   <a data-route="methods" href="#/methods"><span class="navicon">⊙</span><span>数据方法</span></a>
  </nav>
- <div class="sidebottom"><span class="statusdot"></span>本地数据工作台<small>页面与数据分离 · 不自动更新<br>未连接券商，不执行交易</small><div class="version">ql / P1 · PAGE 03</div></div>
+ <div class="sidebottom"><span class="statusdot"></span>ETF研究工作台<small>取证快照 · 采集待接通<br>未连接券商，不执行交易</small><div class="version">ql / P1 · PAGE 03</div></div>
 </aside>
 <div class="workspace">
- <header class="topbar"><span class="breadcrumb">工作空间 <span>/</span> <strong id="crumb">观察概览</strong></span><div class="topright"><span class="chip">本地数据</span><label class="datecontrol">截止日 <select id="asof" aria-label="观察截止日"></select></label></div></header>
- <main id="content" tabindex="-1">
-<section id="boot-status" class="notice" role="status" aria-live="polite">
-<span id="boot-text">正在启动工作台。若此提示一直保留，脚本可能未能加载；请刷新或检查浏览器设置。</span>
-<button id="boot-retry" type="button" hidden>重新载入页面</button></section>
-<section class="dataset-bar" aria-label="市场数据包">
-<div class="dataset-info"><strong id="dataset-status">正在校验数据…</strong><small>文件仅在本机读取；非自动更新行情服务</small></div>
-<button class="primary" id="bundle-open">载入数据 ↑</button><button id="bundle-clear" disabled>移除标签页数据</button>
-<input id="bundle-file" type="file" accept=".json,application/json" hidden><p id="bundle-message" role="status" aria-live="polite"></p></section>
-  <div class="notice"><span class="notice-symbol">i</span><span id="notice-text">正在启动页面；此发布版本不内置市场数据。</span><a href="#/methods">查看依据 ↗</a></div>
+ <header class="topbar"><span class="breadcrumb">工作空间 <span>/</span> <strong id="crumb">观察概览</strong></span><div class="topright"><span class="chip">取证快照</span><label class="datecontrol">截止日 <select id="asof" aria-label="观察截止日"></select></label></div></header>
+ <main id="content" tabindex="-1"><section class="market-bar" aria-label="数据与更新"><strong id="market-status">正在校验数据…</strong><button id="market-refresh">检查本站更新</button><button id="market-open" class="primary">载入本地数据</button><input id="market-file" type="file" accept=".json,application/json" hidden><p id="market-message" role="status" aria-live="polite"></p></section>
+  <div class="notice"><span class="notice-symbol">i</span><span id="notice-text">正在校验内置样例…</span><a href="#/methods">查看依据 ↗</a></div>
   <div id="app" aria-busy="true"><div class="empty">正在加载页面数据…</div></div>
   <noscript><div class="empty">需要启用 JavaScript 才能使用图表与筛选。此页面不访问外部数据接口。</div></noscript>
  </main>
  <footer>ql · 先看变化，再看证据。<span>Asia/Shanghai · 样例非投资建议</span></footer>
 </div>
 <dialog id="evidence-dialog" aria-labelledby="dialog-title"><div class="dialogtop"><h2 id="dialog-title">数据依据</h2><button id="close-dialog" class="iconbutton" aria-label="关闭数据依据">×</button></div><div id="dialog-content"></div></dialog>
-<dialog id="bundle-dialog" aria-labelledby="bundle-title"><div class="dialogtop"><h2 id="bundle-title">载入市场数据包</h2></div><div class="cardbody"><p id="bundle-confirm-text"></p><div class="personaltools gap"><button id="bundle-cancel">取消</button><button class="primary" id="bundle-accept">仅在本地载入</button></div></div></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-<script id="ql-data" type="application/json">null</script>
-<script defer src="./release.84131af892a844aa.js" integrity="sha256-hBMa+JKoRKqhH959l5sHU13AcUR0FnO8rhXD1ca8vKE=" crossorigin="anonymous"></script><script defer src="./start.6cd95d1503535faa.js" integrity="sha256-bNldFQNTX6q284985B9XbaH6val86ZZ3Fp/5F0K7XH4=" crossorigin="anonymous"></script>
+<dialog id="market-dialog" aria-labelledby="market-title"><div class="dialogtop"><h2 id="market-title">载入观察数据</h2></div><div class="cardbody"><p id="market-confirm"></p><div class="personaltools"><button id="market-cancel">取消</button><button id="market-accept" class="primary">确认载入</button></div></div></dialog><div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script id="ql-data" type="application/json">null</script><script id="market-data" type="application/json">null</script>
+<script defer src="./market-boot.c1ab26f219c29ce6.js" integrity="sha384-jctv673Zqo6/Wc+5bCa3lVwQD5UK5V8giXcEd0Y+JP53T4voQfJq7/6VblkMK+Cp"></script><script defer src="./market-data.82a052faef5bff63.js" integrity="sha384-fJi/fRwFqkSbVoGcO+ox4HVH4IZMVq0b6mMAlGkO57/Hlm2MDR+4HUYS7gmivwHg"></script><script defer src="./market-loader.0096f8fc8548bee1.js" integrity="sha384-15sjXvtpR8E9YXTTWOgReEfTEwfoGG2s6js3h1Bj2uDgQIgUt9FSAkTSqUFcMTUE"></script><script defer src="./market-app.cfbdd951bef12bc1.js" integrity="sha384-VURsctMpoV55K/E+SjH/dE9TiN9AvjSFG9zgJ/AXiWTdOj9cZ4kYf1e0KgGxP6pZ"></script>
 </body></html>
