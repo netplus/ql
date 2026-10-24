@@ -18,6 +18,10 @@ from decimal import Decimal
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
+try:
+    from tools.nav_transport import decode_html
+except ModuleNotFoundError:
+    from nav_transport import decode_html
 
 HOSTS = {'www.chinaamc.com','www.efunds.com.cn','www.fsfund.com'}
 LIMIT = 2 * 1024 * 1024
@@ -40,13 +44,49 @@ class Tables(HTMLParser):
         elif tag=='table' and self.table is not None:
             self.tables.append(self.table);self.table=None
 
+class DivTables(HTMLParser):
+    """Issuer class-based table/tr/td markup observed in real HTTP responses.
+
+    Only complete rows inside a table-class div are emitted. Header-based field
+    selection remains in parse_nav; a performance or cumulative-only grid does
+    not become unit NAV simply because it contains numbers.
+    """
+    def __init__(self):
+        super().__init__(); self.tables=[]; self.depth=0
+        self.table=None; self.row=None; self.cell=None
+        self.table_depth=None; self.row_depth=None; self.cell_depth=None
+    def handle_starttag(self,tag,attrs):
+        if tag!='div': return
+        self.depth+=1
+        classes=set((dict(attrs).get('class') or '').split())
+        if 'table' in classes:
+            if self.table is not None: raise ValueError('nested_div_table')
+            self.table=[];self.table_depth=self.depth
+        elif self.table is not None and 'tr' in classes:
+            if self.row is not None: raise ValueError('nested_div_row')
+            self.row=[];self.row_depth=self.depth
+        elif self.row is not None and 'td' in classes:
+            if self.cell is not None: raise ValueError('nested_div_cell')
+            self.cell=[];self.cell_depth=self.depth
+    def handle_data(self,data):
+        if self.cell is not None:self.cell.append(data)
+    def handle_endtag(self,tag):
+        if tag!='div':return
+        if self.depth==self.cell_depth:
+            self.row.append(''.join(self.cell).strip());self.cell=None;self.cell_depth=None
+        if self.depth==self.row_depth:
+            self.table.append(self.row);self.row=None;self.row_depth=None
+        if self.depth==self.table_depth:
+            self.tables.append(self.table);self.table=None;self.table_depth=None
+        self.depth-=1
+
 def parse_nav(html:str,code:str,start:str,end:str)->list[dict]:
     if not re.fullmatch(r'\d{6}',code) or not re.search(r'(?<!\d)'+code+r'(?!\d)',html):
         raise ValueError('fund_code_not_confirmed')
     start_day,end_day=date.fromisoformat(start),date.fromisoformat(end)
     if start_day>end_day:raise ValueError('reversed_interval')
-    p=Tables();p.feed(html);found={}
-    for table in p.tables:
+    p=Tables();p.feed(html);div=DivTables();div.feed(html);found={}
+    for table in p.tables+div.tables:
         nav_col=None;date_col=None
         for row in table:
             headings=[re.sub(r'\s+','',x) for x in row]
@@ -80,7 +120,7 @@ def plan(config:dict,codes:list[str])->list[dict]:
         result.append({'code':code,'url':bycode[code]['nav_url']})
     return result
 
-def acquire(requests:list[dict],start:str,end:str,output:Path)->dict:
+def acquire(requests:list[dict],start:str,end:str,output:Path,*,runtime_id:str="current_work_container")->dict:
     date.fromisoformat(start);date.fromisoformat(end)
     if start>end:raise ValueError('reversed_interval')
     output.mkdir(parents=True,exist_ok=False)
@@ -90,24 +130,28 @@ def acquire(requests:list[dict],start:str,end:str,output:Path)->dict:
         now=lambda:datetime.now(timezone.utc).isoformat(timespec='seconds')
         result={**item,'started_at':now(),'status':'error','row_count':0,'raw_response_archived':False,'mode':'http_response'}
         try:
-            req=urllib.request.Request(item['url'],headers={'User-Agent':'ql-personal-research/0.2 (bounded data feasibility probe)','Accept':'text/html'})
+            req=urllib.request.Request(item['url'],headers={'User-Agent':'ql-personal-research/0.2 (bounded data feasibility probe)','Accept':'text/html','Accept-Encoding':'identity'})
             with opener.open(req,timeout=12) as r:
                 if r.geturl()!=item['url'] or r.status!=200:raise ValueError('unexpected_HTTP_status_or_redirect')
                 if r.headers.get_content_type()!='text/html':raise ValueError('unexpected_MIME')
                 raw=r.read(LIMIT+1)
                 if len(raw)>LIMIT:raise ValueError('response_too_large')
-                encoding=r.headers.get_content_charset() or 'utf-8'
-                if encoding.lower() not in ('utf-8','utf8','gbk','gb2312','gb18030'):raise ValueError('unsupported_encoding')
-                html=raw.decode(encoding)
+                header_charset=r.headers.get_content_charset()
+                content_encoding=r.headers.get('Content-Encoding')
             path=output/(item['code']+'.html');path.write_bytes(raw)
-            result.update(raw_response_archived=True,raw_sha256=hashlib.sha256(raw).hexdigest(),raw_file=path.name)
+            # Preserve original wire bytes before any text conversion can fail.
+            result.update(raw_response_archived=True,raw_sha256=hashlib.sha256(raw).hexdigest(),
+                          raw_file=path.name,http_status=200,response_bytes=len(raw),
+                          header_charset=header_charset,content_encoding=content_encoding or 'identity')
+            html,decoding=decode_html(raw,header_charset,content_encoding)
+            result.update(decoding)
             rows=parse_nav(html,item['code'],start,end)
             (output/(item['code']+'.rows.json')).write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n')
             result.update(status='observed' if rows[-1]['trade_date']==end else 'stale',row_count=len(rows),latest_observed_date=rows[-1]['trade_date'])
         except Exception as e:
             result['error_class']=type(e).__name__;result['reason']=str(e)[:400]
         result['finished_at']=now();results.append(result)
-    report={'requested_interval':[start,end],'target_runtime':'current_work_container','production_runner_verified':False,'results':results,'public_export_allowed':False}
+    report={'requested_interval':[start,end],'target_runtime':runtime_id,'production_runner_verified':False,'results':results,'public_export_allowed':False}
     (output/'probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     return report
 

@@ -1,0 +1,76 @@
+name: Bounded NAV runtime acceptance
+on:
+  push:
+    branches: [feat/p1-runtime-acceptance]
+    paths:
+      - .github/workflows/nav-acceptance.yml
+      - tools/run_nav_cycle.py
+      - tools/collect_nav.py
+      - tools/nav_transport.py
+      - tools/inspect_nav_structure.py
+      - tests/test_nav_decode.py
+      - tests/test_nav_cycle.py
+      - config/**
+permissions:
+  contents: read
+concurrency:
+  group: ql-nav-runtime-acceptance
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    if: github.repository == 'netplus/ql' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout reviewed feature commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Test cycle and existing decimal model (synthetic fixtures)
+        run: |
+          python3 -m unittest discover -s tests -p test_nav_cycle.py -v
+          python3 -m unittest discover -s tests -p test_nav_ingest.py -v
+          python3 -m unittest discover -s tests -p test_nav_decode.py -v
+          node --test tests/test_market_data.js
+      - name: Read two official endpoints once; build private preview if complete
+        run: >-
+          python3 tools/run_nav_cycle.py
+          --codes 159995,510330
+          --start 2026-10-08 --end 2026-10-23
+          --execute --output "$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+      - name: Record non-market diagnostic only
+        if: always()
+        run: |
+          QL_CYCLE_DIR="$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          if [ -f "$QL_CYCLE_DIR/summary.json" ]; then
+            printf '## One-shot NAV acceptance (not daily service)\n```json\n' >> "$GITHUB_STEP_SUMMARY"
+            cat "$QL_CYCLE_DIR/summary.json" >> "$GITHUB_STEP_SUMMARY"
+            printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf 'Cycle did not produce a summary; inspect the failed step.\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Classify failure without exposing source content
+        if: always()
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, re
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP']) / ('ql-nav-'+os.environ['GITHUB_RUN_ID']+'-'+os.environ['GITHUB_RUN_ATTEMPT']) / 'raw/probe.json'
+          if p.exists():
+              for r in json.loads(p.read_text())['results']:
+                  e=r.get('error_class','none'); message=r.get('reason','').lower()
+                  if not re.fullmatch('[A-Za-z]{1,80}',e): e='OtherError'
+                  kind=('tls_certificate_validation_failed' if 'certificate_verify_failed' in message else
+                        'tls_handshake_failed' if 'ssl' in message else
+                        'text_decoding_failed' if e=='UnicodeDecodeError' else
+                        'dns_resolution_failed' if 'name resolution' in message else
+                        'timeout' if 'timed out' in message else
+                        'http_error' if e=='HTTPError' else 'other')
+                  print(json.dumps({'code':r['code'],'error_class':e,'failure_kind':kind}))
+          PYCODE
+      - name: Inspect only static structure, not market numbers
+        if: always()
+        run: python3 -m tools.inspect_nav_structure "$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/raw"
+      - name: Remove temporary raw data and preview (no artifact upload)
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
