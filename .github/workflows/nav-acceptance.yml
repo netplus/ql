@@ -18,8 +18,6 @@ jobs:
     if: github.repository == 'netplus/ql' && github.event.repository.private == false
     runs-on: ubuntu-24.04
     timeout-minutes: 8
-    env:
-      QL_CYCLE_DIR: ${{ runner.temp }}/ql-nav-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout reviewed feature commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -35,10 +33,11 @@ jobs:
           python3 tools/run_nav_cycle.py
           --codes 159995,510330
           --start 2026-10-08 --end 2026-10-23
-          --execute --output "$QL_CYCLE_DIR"
+          --execute --output "$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
       - name: Record non-market diagnostic only
         if: always()
         run: |
+          QL_CYCLE_DIR="$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           if [ -f "$QL_CYCLE_DIR/summary.json" ]; then
             printf '## One-shot NAV acceptance (not daily service)\n```json\n' >> "$GITHUB_STEP_SUMMARY"
             cat "$QL_CYCLE_DIR/summary.json" >> "$GITHUB_STEP_SUMMARY"
@@ -48,4 +47,4 @@ jobs:
           fi
       - name: Remove temporary raw data and preview (no artifact upload)
         if: always()
-        run: rm -rf -- "$QL_CYCLE_DIR"
+        run: rm -rf -- "$RUNNER_TEMP/ql-nav-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
