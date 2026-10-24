@@ -1,15 +1,34 @@
 {
-  "schema": "ql.public-shell/1",
-  "version": "p1.1-local-bundle/1",
+  "schema": "ql.public-shell/2",
+  "version": "p1.2-pages-integrity/1",
   "market_data_included": false,
   "personal_data_included": false,
+  "entrypoints": {
+    "app.js": "app.666b3d3f96e5dfb0.js",
+    "release.js": "release.84131af892a844aa.js",
+    "style.css": "style.ded5129c89dca033.css",
+    "release.css": "release.d4ec649c35467b4e.css",
+    "start.js": "start.6cd95d1503535faa.js"
+  },
+  "compatibility_files": [
+    "app.js",
+    "release.css",
+    "release.js",
+    "start.js",
+    "style.css"
+  ],
   "files": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app.666b3d3f96e5dfb0.js": "666b3d3f96e5dfb0fb7bde4202d53eea09d8c8017cbd3d29d27604c2415397ab",
     "app.js": "666b3d3f96e5dfb0fb7bde4202d53eea09d8c8017cbd3d29d27604c2415397ab",
-    "index.html": "3e0274e11dddfa81491f516e7f33ead5191664a941bb02062d3870a146c6874e",
+    "index.html": "0bcd6732ee8d17386ee522664134c2a032b47e22b6d9ea5c5de9bea69072f268",
+    "release.84131af892a844aa.js": "84131af892a844aaa11fde7d979b07535dc07144741673bcae15c3d5c6bcbca1",
     "release.css": "d4ec649c35467b4e5c5db26c653ea9c45bcc13f7ebc30751247e010f0c2c63e1",
+    "release.d4ec649c35467b4e.css": "d4ec649c35467b4e5c5db26c653ea9c45bcc13f7ebc30751247e010f0c2c63e1",
     "release.js": "84131af892a844aaa11fde7d979b07535dc07144741673bcae15c3d5c6bcbca1",
+    "start.6cd95d1503535faa.js": "6cd95d1503535faab6f38f7ce41f576da1fabda97ce99677169ff91742bb5c7e",
     "start.js": "e2ee806ac62b029c1f227af68be07341f51bd025ec6d1539db3ddc01755e7857",
-    "style.css": "ded5129c89dca033fa85ae58a60c9c042a41f9e77b8103cf1158d3ecf713e567"
+    "style.css": "ded5129c89dca033fa85ae58a60c9c042a41f9e77b8103cf1158d3ecf713e567",
+    "style.ded5129c89dca033.css": "ded5129c89dca033fa85ae58a60c9c042a41f9e77b8103cf1158d3ecf713e567"
   }
 }
