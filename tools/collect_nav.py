@@ -80,7 +80,7 @@ def plan(config:dict,codes:list[str])->list[dict]:
         result.append({'code':code,'url':bycode[code]['nav_url']})
     return result
 
-def acquire(requests:list[dict],start:str,end:str,output:Path)->dict:
+def acquire(requests:list[dict],start:str,end:str,output:Path,*,runtime_id:str="current_work_container")->dict:
     date.fromisoformat(start);date.fromisoformat(end)
     if start>end:raise ValueError('reversed_interval')
     output.mkdir(parents=True,exist_ok=False)
@@ -100,14 +100,14 @@ def acquire(requests:list[dict],start:str,end:str,output:Path)->dict:
                 if encoding.lower() not in ('utf-8','utf8','gbk','gb2312','gb18030'):raise ValueError('unsupported_encoding')
                 html=raw.decode(encoding)
             path=output/(item['code']+'.html');path.write_bytes(raw)
-            result.update(raw_response_archived=True,raw_sha256=hashlib.sha256(raw).hexdigest(),raw_file=path.name)
+            result.update(raw_response_archived=True,raw_sha256=hashlib.sha256(raw).hexdigest(),raw_file=path.name,encoding=encoding,http_status=200,response_bytes=len(raw))
             rows=parse_nav(html,item['code'],start,end)
             (output/(item['code']+'.rows.json')).write_text(json.dumps(rows,ensure_ascii=False,indent=2)+'\n')
             result.update(status='observed' if rows[-1]['trade_date']==end else 'stale',row_count=len(rows),latest_observed_date=rows[-1]['trade_date'])
         except Exception as e:
             result['error_class']=type(e).__name__;result['reason']=str(e)[:400]
         result['finished_at']=now();results.append(result)
-    report={'requested_interval':[start,end],'target_runtime':'current_work_container','production_runner_verified':False,'results':results,'public_export_allowed':False}
+    report={'requested_interval':[start,end],'target_runtime':runtime_id,'production_runner_verified':False,'results':results,'public_export_allowed':False}
     (output/'probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     return report
 
