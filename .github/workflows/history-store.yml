@@ -1,0 +1,42 @@
+name: Local history and snapshot acceptance
+on:
+  push:
+    branches: [feat/m2-history-store]
+    paths:
+      - tools/history.py
+      - tools/history_store.py
+      - tests/test_history_store.py
+      - tests/test_history_sources.js
+      - web/market-data.js
+      - .github/workflows/history-store.yml
+permissions:
+  contents: read
+concurrency:
+  group: ql-local-history-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Local disk history, revisions, rollback, backup and restore
+        run: python3 -m unittest discover -s tests -p test_history_store.py -v
+      - name: Page data protocol and expanded bounded evidence registry
+        run: node --test tests/test_market_data.js tests/test_history_sources.js
+      - name: Existing application packaging regressions
+        run: python3 -m unittest discover -s tests -p test_market_http_build.py -v
+      - name: Install pinned browser driver
+        run: python3 -m pip install --disable-pip-version-check --no-input playwright==1.57.0
+      - name: Real loopback browser regression with synthetic data only
+        run: python3 tools/test_market_http.py --output "$RUNNER_TEMP/history-browser-result.json"
+      - name: Record test status without market records
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/history-browser-result.json" ]; then
+            cat "$RUNNER_TEMP/history-browser-result.json" >> "$GITHUB_STEP_SUMMARY"
+          fi
+# No data-source requests, market-data artifacts, external storage, or deployment.
+# This is a feature-branch test, not a persistent database or a daily service.
