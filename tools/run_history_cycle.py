@@ -55,12 +55,31 @@ def sync_dir(path: Path) -> None:
 
 
 def write_once(path: Path, raw: bytes) -> None:
-    if path.exists() or path.is_symlink():
-        if read(path, max(LIMIT, len(raw))) != raw:
-            raise PipelineError('immutable_file_mismatch')
-    else:
-        private_file(path, raw)
-        sync_dir(path.parent)
+    """Install a complete immutable file while the store writer lock is held.
+
+    Never leave a partial final pathname after an interrupted write. The parent
+    is trusted and all pipeline writers must use writer(); this is not a
+    cross-host or hostile concurrent filesystem-writer guarantee.
+    """
+    outside_repo(path)
+    def already_written() -> bool:
+        if path.exists() or path.is_symlink():
+            if read(path, max(LIMIT, len(raw))) != raw:
+                raise PipelineError('immutable_file_mismatch')
+            return True
+        return False
+    if already_written():
+        return
+    temporary = path.with_name('.' + path.name + '.' + secrets.token_hex(8))
+    try:
+        private_file(temporary, raw)
+        # Recheck before installing; never replace a different existing value.
+        if not already_written():
+            os.replace(temporary, path)
+            sync_dir(path.parent)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 
 def replace_json(path: Path, obj: dict) -> None:
@@ -158,6 +177,11 @@ def verified_checkpoint(run: Path, body: dict) -> tuple[dict, dict[str, bytes], 
     source = outside_repo(run / 'acquisition' / attempt / 'raw')
     probe = json.loads(read(source / 'probe.json', 256 * 1024))
     planned = body['plan']
+    results = probe.get('results')
+    if (not isinstance(results, list) or not results or
+        any(not isinstance(r, dict) or type(r.get('http_status')) is not int or
+            r['http_status'] != 200 for r in results)):
+        raise PipelineError('checkpoint_http_status_invalid')
     # Freeze raw bytes and parser output once. Reparse and store those same bytes;
     # neither a claimed green summary nor a precomputed market bundle is trusted.
     raw_by_code = {}
@@ -209,7 +233,11 @@ def finish(store: Store, run: Path, body: dict, *, builder=build) -> dict:
     bundle, responses, receipt = verified_checkpoint(run, body)
     imported = store.ingest(encode(bundle), responses=responses)
     receipts = local_directory(store.directory, 'receipts')
-    write_once(receipts / (imported['batch_id'] + '.json'), encode(receipt))
+    # A batch can be reused by different history windows or probe records.
+    # Keep those receipts separately without duplicating any database facts.
+    receipt_raw = encode(receipt)
+    receipt_name = imported['batch_id'] + '.' + sha(receipt_raw) + '.json'
+    write_once(receipts / receipt_name, receipt_raw)
     store.audit()
     with closing(store.connect()) as db:
         cutoff = db.execute('SELECT MAX(known_at) FROM batches').fetchone()[0]
@@ -276,8 +304,9 @@ def pipeline(store: Store, *, request: dict | None, review: dict, resume: str | 
                 if resume:
                     if not RUN_ID.fullmatch(resume):
                         raise PipelineError('invalid_run_id')
-                    run = outside_repo(store.directory / 'runs' / resume)
-                    body = load_intent(run)
+                    candidate = outside_repo(store.directory / 'runs' / resume)
+                    body = load_intent(candidate)
+                    run = candidate
                 else:
                     if request is None:
                         raise PipelineError('request_required')
@@ -289,7 +318,13 @@ def pipeline(store: Store, *, request: dict | None, review: dict, resume: str | 
                 if not resume:
                     runs = local_directory(store.directory, 'runs')
                     result['run_id'] = secrets.token_hex(12)
-                    run = local_directory(runs, result['run_id'])
+                    candidate = outside_repo(runs / result['run_id'])
+                    try:
+                        candidate.mkdir(mode=0o700, exist_ok=False)
+                    except FileExistsError as exc:
+                        raise PipelineError('run_id_collision') from exc
+                    run = candidate
+                    sync_dir(runs)
                     write_once(run / 'intent.json', encode(request))
                     result['stage'] = 'acquisition'
                     collector(body['config'], body['plan'], run / 'acquisition', nav.execute)
