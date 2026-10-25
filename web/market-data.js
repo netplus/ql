@@ -3,7 +3,7 @@
  */
 (function(root){
 'use strict';
-const S=100000000n, MAX_BYTES=2*1024*1024;
+const S=100000000n, MAX_BYTES=2*1024*1024, MAX_SOURCES=2048;
 const HOSTS=new Set(['www.chinaamc.com','www.efunds.com.cn','www.fsfund.com','www.sse.com.cn','www.szse.cn','fund.szse.cn']);
 const GROUPS=new Set(['行业相关','主题','宽基','风格']);
 const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
@@ -40,7 +40,7 @@ function validate(b){
  need(days.length>=1&&days.length<=520&&new Set(days).size===days.length&&days.every((d,i)=>!i||d>days[i-1]),'日历须有序且不重复');
  need(days.at(-1)===asof&&b.calendar.coverage_start===days[0]&&b.calendar.coverage_end===asof,'日历范围与数据截止日不一致');
  const calendar={version:text(b.calendar.version,80),source_url:url(b.calendar.source_url),sessions:days,coverage_start:days[0],coverage_end:asof};
- need(object(b.sources)&&Object.keys(b.sources).length>0&&Object.keys(b.sources).length<=64,'来源登记数量无效');
+ need(object(b.sources)&&Object.keys(b.sources).length>0&&Object.keys(b.sources).length<=MAX_SOURCES,'来源登记数量无效');
  const sources=Object.create(null);
  for(const [id,s] of Object.entries(b.sources)){
   need(/^[a-z][a-z0-9-]{1,79}$/.test(id)&&object(s),'来源标识无效');
@@ -108,6 +108,6 @@ function model(input){
  }
  return {schema:'ql.market-view/2',version:b.version,evidence_commit:'字段级来源与取证时间见数据方法',timezone:b.timezone,dates:days,asof:b.asof,observed_at:b.observed_at,report_status:'review_snapshot',public_export_allowed:false,auto_updated:false,benchmark_code:b.benchmark_code,sources:b.sources,products:ps,accepted_flow_cny:null,scope:`${ps.length}只ETF观察池；不是全A股或正式行业横截面。`,warnings:[]};
 }
-const api=Object.freeze({parse,validate,model,round,MAX_BYTES});
+const api=Object.freeze({parse,validate,model,round,MAX_BYTES,MAX_SOURCES});
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.QLMarketData=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

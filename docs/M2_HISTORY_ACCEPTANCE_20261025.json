@@ -1,0 +1,60 @@
+{
+  "schema": "ql.history-acceptance/1",
+  "tested_commit": "3b872b9a49a2795c358199ca0c6e4f5c1d076e93",
+  "pull_request": 12,
+  "issue": 5,
+  "ci": {
+    "run_id": 40145339050,
+    "job_id": 121025343462,
+    "url": "https://github.com/netplus/ql/actions/runs/40145339050",
+    "conclusion": "success",
+    "complete_job_log_read": true,
+    "history_python_tests": 30,
+    "packaging_python_tests": 5,
+    "node_data_tests": 35,
+    "real_loopback_chrome_checks": 34,
+    "fixture_type": "synthetic_only",
+    "html_injection": false,
+    "route_mocking": false,
+    "storage_shim": false,
+    "source_http_requests": 0,
+    "online_deployment_tested_this_run": false
+  },
+  "local_existing_sample": {
+    "input_name": "ql-market-20261023.json",
+    "data_asof": "2026-10-23",
+    "new_market_collection": false,
+    "products": 7,
+    "sessions": 12,
+    "nav_values": 84,
+    "share_values": 6,
+    "source_records": 11,
+    "raw_http_responses": 0,
+    "known_at": "2026-10-25T00:01:04.342424Z",
+    "separate_processes_used": true,
+    "repeat_import_inserted_facts": 0,
+    "restored_snapshot_byte_identical": true,
+    "snapshot_sha256": "deb5abdc82a461bf35496c450a5f7eacc3ff5702bde61579c30e8ea9f73ead43",
+    "numeric_fields_match_input": true,
+    "latest_nav_coverage": "7/7",
+    "latest_shares_coverage": "0/7",
+    "private_database_or_data_uploaded_to_github": false
+  },
+  "operational_state": {
+    "permanent_user_storage_verified": false,
+    "collector_checkpoint_integration_completed": false,
+    "source_publication_permission_confirmed": false,
+    "public_market_feed_published": false,
+    "daily_schedule_enabled": false,
+    "production_pages_modified": false,
+    "main_merged": false,
+    "vivo_ipad_safari_tested": false
+  },
+  "limitations": [
+    "Local filesystem and subprocess persistence is not permanent user-host deployment.",
+    "Existing sample remains web-text transcription; no missing original HTTP response was invented.",
+    "Content hashes detect mismatch; they do not authenticate source identity or grant publication rights.",
+    "The new source-count limit has not been deployed to the live Page.",
+    "No previous blocked encrypted-upload operation was retried."
+  ]
+}
